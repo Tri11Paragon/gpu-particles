@@ -18,6 +18,8 @@
 #include "blt/gfx/renderer/resource_manager.h"
 #include "blt/gfx/renderer/batch_2d_renderer.h"
 #include "blt/gfx/renderer/camera.h"
+#include <shaders/particle.frag>
+#include <shaders/particle.vert>
 #include <imgui.h>
 
 blt::gfx::matrix_state_manager global_matrices;
@@ -32,10 +34,10 @@ struct particle_t
     blt::vec2 acceleration;
 };
 
-blt::gfx::vertex_array_t particle_vao;
-blt::gfx::vertex_buffer_t particle_vbo;
-blt::gfx::element_buffer_t alive_particles_ebo;
-blt::gfx::shader_t particle_shader{};
+std::unique_ptr<blt::gfx::vertex_array_t> particle_vao;
+std::unique_ptr<blt::gfx::vertex_buffer_t> particle_vbo;
+std::unique_ptr<blt::gfx::element_buffer_t> alive_particles_ebo;
+std::unique_ptr<blt::gfx::shader_t> particle_shader;
 
 std::vector<blt::u32> alive_particles;
 std::vector<blt::u32> dead_particles;
@@ -45,6 +47,7 @@ void init(const blt::gfx::window_data&)
 {
     using namespace blt::gfx;
 
+    particle_shader = std::unique_ptr<shader_t>(shader_t::make(shader_particle_2d_vert, shader_particle_2d_frag));
 
     global_matrices.create_internals();
     resources.load_resources();

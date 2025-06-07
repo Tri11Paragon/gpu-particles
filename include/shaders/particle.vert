@@ -1,6 +1,6 @@
 #ifdef __cplusplus
 #include <string>
-const std::string shader_2d_font_frag = R"("
+const std::string shader_particle_2d_vert = R"("
 #version 300 es
 precision mediump float;
 
