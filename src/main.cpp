@@ -25,6 +25,22 @@ blt::gfx::resource_manager resources;
 blt::gfx::batch_renderer_2d renderer_2d(resources, global_matrices);
 blt::gfx::first_person_camera camera;
 
+struct particle_t
+{
+    blt::vec2 position;
+    blt::vec2 velocity;
+    blt::vec2 acceleration;
+};
+
+blt::gfx::vertex_array_t particle_vao;
+blt::gfx::vertex_buffer_t particle_vbo;
+blt::gfx::element_buffer_t alive_particles_ebo;
+blt::gfx::shader_t particle_shader{};
+
+std::vector<blt::u32> alive_particles;
+std::vector<blt::u32> dead_particles;
+std::vector<particle_t> particles;
+
 void init(const blt::gfx::window_data&)
 {
     using namespace blt::gfx;
