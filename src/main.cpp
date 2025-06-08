@@ -34,20 +34,66 @@ blt::gfx::first_person_camera camera;
 
 // use types for state that way you are not confused about what is happening?
 
+class unique_vbo_t
+{
+public:
+	explicit unique_vbo_t(const GLuint type): type(type)
+	{
+		glGenBuffers(1, &*vboID);
+	}
+
+	unique_vbo_t(const unique_vbo_t&) = delete;
+
+	unique_vbo_t& operator=(const unique_vbo_t&) = delete;
+
+	unique_vbo_t(unique_vbo_t&& other) noexcept: vboID(std::exchange(other.vboID, std::nullopt)), type(other.type)
+	{
+	}
+
+	unique_vbo_t& operator=(unique_vbo_t&& other) noexcept
+	{
+		vboID = std::exchange(other.vboID, vboID);
+		type = std::exchange(other.type, type);
+		return *this;
+	}
+
+	~unique_vbo_t()
+	{
+		if (vboID)
+			glDeleteBuffers(1, &*vboID);
+	}
+
+private:
+	std::optional<GLuint> vboID;
+	GLuint type;
+};
+
 class unique_vao_t
 {
 public:
 	unique_vao_t(): vaoID(0)
-	{}
-
-	void create()
 	{
-		#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
-			BLT_CONTRACT(!vaoID, "VAO already created");
-		#endif
-
-		vaoID = 0;
 		glGenVertexArrays(1, &*vaoID);
+	}
+
+	unique_vao_t(const unique_vao_t&) = delete;
+
+	unique_vao_t& operator=(const unique_vao_t&) = delete;
+
+	unique_vao_t(unique_vao_t&& other) noexcept: vaoID(std::exchange(other.vaoID, std::nullopt))
+	{
+	}
+
+	unique_vao_t& operator=(unique_vao_t&& other) noexcept
+	{
+		vaoID = std::exchange(other.vaoID, vaoID);
+		return *this;
+	}
+
+	~unique_vao_t()
+	{
+		if (vaoID)
+			glDeleteVertexArrays(1, &*vaoID);
 	}
 
 private:
