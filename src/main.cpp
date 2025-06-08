@@ -18,9 +18,13 @@
 #include "blt/gfx/renderer/resource_manager.h"
 #include "blt/gfx/renderer/batch_2d_renderer.h"
 #include "blt/gfx/renderer/camera.h"
+#include <blt/std/random.h>
 #include <shaders/particle.frag>
 #include <shaders/particle.vert>
 #include <imgui.h>
+#include <blt/std/ranges.h>
+
+constexpr blt::size_t PARTICLE_COUNT = 8192;
 
 blt::gfx::matrix_state_manager global_matrices;
 blt::gfx::resource_manager resources;
@@ -32,6 +36,12 @@ struct particle_t
     blt::vec2 position;
     blt::vec2 velocity;
     blt::vec2 acceleration;
+
+    static particle_t make_particle()
+    {
+        blt::random::random_t random{std::random_device()()};
+        return {blt::vec2{random.get(0.0f, 500.0f), random.get(0.0f, 500.0f)}, blt::vec2{}, blt::vec2{}};
+    }
 };
 
 std::unique_ptr<blt::gfx::vertex_array_t> particle_vao;
@@ -48,6 +58,24 @@ void init(const blt::gfx::window_data&)
     using namespace blt::gfx;
 
     particle_shader = std::unique_ptr<shader_t>(shader_t::make(shader_particle_2d_vert, shader_particle_2d_frag));
+
+    for (blt::size_t i = 0; i < PARTICLE_COUNT; i++)
+    {
+        particles.push_back(particle_t::make_particle());
+        alive_particles.push_back(i);
+    }
+
+    particle_vbo = std::make_unique<vertex_buffer_t>();
+    particle_vbo->create(GL_ARRAY_BUFFER);
+    particle_vbo->allocate(sizeof(particle_t) * particles.size(), GL_DYNAMIC_DRAW, particles.data());
+
+    alive_particles_ebo = std::make_unique<element_buffer_t>();
+    alive_particles_ebo->create();
+    alive_particles_ebo->allocate(sizeof(blt::u32) * alive_particles.size(), GL_DYNAMIC_DRAW, alive_particles.data());
+
+    particle_vao = std::make_unique<vertex_array_t>();
+    particle_vao->bindVBO(*particle_vbo, 0, 2, GL_FLOAT, sizeof(particle_t), 0);
+    particle_vao->bindElement(*alive_particles_ebo);
 
     global_matrices.create_internals();
     resources.load_resources();
