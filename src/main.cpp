@@ -19,7 +19,8 @@
 #include "blt/gfx/renderer/batch_2d_renderer.h"
 #include "blt/gfx/renderer/camera.h"
 #include <blt/std/random.h>
-#include <blt/debug.h>
+#include <vao.h>
+#include <vbo.h>
 #include <shaders/particle.frag>
 #include <shaders/particle.vert>
 #include <imgui.h>
@@ -33,122 +34,6 @@ blt::gfx::batch_renderer_2d renderer_2d(resources, global_matrices);
 blt::gfx::first_person_camera camera;
 
 // use types for state that way you are not confused about what is happening?
-
-class unique_vbo_t;
-
-namespace detail
-{
-	class vbo_context_t
-	{
-	public:
-		explicit vbo_context_t(unique_vbo_t& vbo): vbo(vbo)
-		{
-			bind();
-		}
-
-		/**
-		 * By default, the VBO is bound when this class is constructed (this class should only be constructed through the VBO bind() method)
-		 * This function is provided in case you need to rebind the VBO
-		 */
-		vbo_context_t& bind();
-
-		vbo_context_t& unbind();
-
-	private:
-		unique_vbo_t& vbo;
-	};
-}
-
-class unique_vbo_t
-{
-	friend class detail::vbo_context_t;
-
-public:
-	explicit unique_vbo_t(const GLuint type): type(type)
-	{
-		glGenBuffers(1, &*vboID);
-	}
-
-	unique_vbo_t(const unique_vbo_t&) = delete;
-
-	unique_vbo_t& operator=(const unique_vbo_t&) = delete;
-
-	unique_vbo_t(unique_vbo_t&& other) noexcept: vboID(std::exchange(other.vboID, std::nullopt)), type(other.type)
-	{}
-
-	unique_vbo_t& operator=(unique_vbo_t&& other) noexcept
-	{
-		vboID = std::exchange(other.vboID, vboID);
-		type = std::exchange(other.type, type);
-		return *this;
-	}
-
-	GLuint change_type(const GLuint type)
-	{
-		return std::exchange(this->type, type);
-	}
-
-	[[nodiscard]] auto bind()
-	{
-		return detail::vbo_context_t{*this};
-	}
-
-	~unique_vbo_t()
-	{
-		if (vboID)
-			glDeleteBuffers(1, &*vboID);
-	}
-
-private:
-	std::optional<GLuint> vboID;
-	GLuint type;
-};
-
-namespace detail
-{
-	vbo_context_t& vbo_context_t::bind()
-	{
-		glBindBuffer(vbo.type, *vbo.vboID);
-		return *this;
-	}
-
-	vbo_context_t& vbo_context_t::unbind()
-	{
-		glBindBuffer(vbo.type, 0);
-		return *this;
-	}
-}
-
-class unique_vao_t
-{
-public:
-	unique_vao_t(): vaoID(0)
-	{
-		glGenVertexArrays(1, &*vaoID);
-	}
-
-	unique_vao_t(const unique_vao_t&) = delete;
-
-	unique_vao_t& operator=(const unique_vao_t&) = delete;
-
-	unique_vao_t(unique_vao_t&& other) noexcept: vaoID(std::exchange(other.vaoID, std::nullopt))
-	{}
-
-	unique_vao_t& operator=(unique_vao_t&& other) noexcept
-	{
-		vaoID = std::exchange(other.vaoID, vaoID);
-		return *this;
-	}
-
-	~unique_vao_t()
-	{
-		if (vaoID)
-			glDeleteVertexArrays(1, &*vaoID);
-	}
-
-private:
-	std::optional<GLuint> vaoID;
-};
 
 struct particle_t
 {
