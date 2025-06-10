@@ -26,17 +26,17 @@ namespace blt::gfx
 		vbo_context_t& vbo_context_t::bind()
 		{
 			BLT_CONTRACT(vbo.vboID, "Expected VBO to have an assoicated VBO ID!");
-			glBindBuffer(vbo.type, *vbo.vboID);
+			glBindBuffer(vbo.buffer_type, *vbo.vboID);
 			return *this;
 		}
 
 		vbo_context_t& vbo_context_t::unbind()
 		{
-			glBindBuffer(vbo.type, 0);
+			glBindBuffer(vbo.buffer_type, 0);
 			return *this;
 		}
 
-		vbo_context_t& vbo_context_t::reserve(const GLsizeiptr size, const GLint mem_type)
+		vbo_context_t& vbo_context_t::resize(const GLsizeiptr size, const GLint mem_type)
 		{
 			vbo.size = size;
 			vbo.memory_type = mem_type;
@@ -44,9 +44,9 @@ namespace blt::gfx
 			return *this;
 		}
 
-		vbo_context_t& vbo_context_t::upload(const size_t size, void* ptr, const GLint mem_type)
+		vbo_context_t& vbo_context_t::upload(const size_t size, const void* ptr, const GLint mem_type)
 		{
-			if (mem_type != vbo.memory_type || vbo.size < size)
+			if (mem_type != vbo.memory_type || static_cast<size_t>(vbo.size) < size)
 			{
 				vbo.size = static_cast<GLsizeiptr>(size);
 				vbo.memory_type = mem_type;
@@ -65,9 +65,16 @@ namespace blt::gfx
 		}
 	}
 
-	auto unique_vbo_t::bind()
+	detail::vbo_context_t unique_vbo_t::bind()
 	{
 		BLT_CONTRACT(glfwGetCurrentContext() != nullptr, "Expected active OpenGL context!");
 		return detail::vbo_context_t{*this};
+	}
+
+	void unique_ubo_t::set_location(const i32 new_location)
+	{
+		BLT_CONTRACT(native_handle().has_value(), "Expected UBO to have an associated buffer! (You are probably calling this on a moved-from value)");
+		location = new_location;
+		glBindBufferBase(GL_UNIFORM_BUFFER, location, *native_handle());
 	}
 }

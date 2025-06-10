@@ -30,6 +30,10 @@ namespace blt::gfx
 
 	namespace detail
 	{
+		/**
+		 * So long as this class is called from vbo.bind(), it is always valid to chain any internal functions.
+		 * This system is designed to be foolproof, so don't get too clever
+		 */
 		class vbo_context_t
 		{
 		public:
@@ -47,27 +51,45 @@ namespace blt::gfx
 
 			vbo_context_t& unbind();
 
-			vbo_context_t& reserve(GLsizeiptr size, GLint mem_type);
+			/**
+			 * Reserves a chunk of GPU memory for future use
+			 */
+			vbo_context_t& resize(GLsizeiptr size, GLint mem_type);
 
-			vbo_context_t& reserve(const size_t size, const GLint mem_type)
+			/**
+			 * Reserves a chunk of GPU memory for future use
+			 */
+			vbo_context_t& resize(const size_t size, const GLint mem_type)
 			{
-				return reserve(static_cast<GLsizeiptr>(size), mem_type);
+				return resize(static_cast<GLsizeiptr>(size), mem_type);
 			}
 
-			vbo_context_t& upload(size_t size, void* ptr, GLint mem_type);
+			/**
+			 *	Uploads a chunk of memory to the GPU. If the existing VBO has enough space, the memory will be reused.
+			 */
+			vbo_context_t& upload(size_t size, const void* ptr, GLint mem_type);
 
-			template <typename T>
+			/**
+			 *	Uploads a chunk of memory to the GPU. If the existing VBO has enough space, the memory will be reused.
+			 */
+			template <typename T, std::enable_if_t<!std::is_same_v<T, void>, bool> = true>
 			vbo_context_t& upload(const size_t size, T* ptr, const GLint mem_type)
 			{
 				return upload(size, static_cast<void*>(ptr), mem_type);
 			}
 
+			/**
+			 * Updates an internal segment of the VBO. This function will never reallocate.
+			 */
 			vbo_context_t& update(size_t offset, size_t size, const void* ptr);
 
-			template <typename T>
-			vbo_context_t& update(size_t offset, const size_t size, T* ptr)
+			/**
+			 * Updates an internal segment of the VBO. This function will never reallocate.
+			 */
+			template <typename T, std::enable_if_t<!std::is_same_v<T, void>, bool> = true>
+			vbo_context_t& update(const size_t offset, const size_t size, T* ptr)
 			{
-				return upload(offset, size, static_cast<void*>(ptr));
+				return update(offset, size, static_cast<void*>(ptr));
 			}
 
 		private:
@@ -102,12 +124,26 @@ namespace blt::gfx
 			return *this;
 		}
 
+		/**
+		 * Changes the internal buffer type of this VBO
+		 */
 		GLuint change_type(const GLuint type)
 		{
 			return std::exchange(this->buffer_type, type);
 		}
 
-		[[nodiscard]] auto bind();
+		/**
+		 * This function binds the VBO to the current buffer_type slot and returns an object which allows you to modify or use this VBO.
+		 * This allows you to use the VBO without worrying about whether an operation is valid in this context.
+		 * As so long as you use this object in line, or without binding other VBOs to the same buffer_type
+		 * (violating the contracts this function attempts to create) then all functions on the associated object are valid to call.
+		 */
+		[[nodiscard]] detail::vbo_context_t bind();
+
+		[[nodiscard]] auto native_handle() const
+		{
+			return vboID;
+		}
 
 		~unique_vbo_t()
 		{
@@ -139,8 +175,17 @@ namespace blt::gfx
 	class unique_ubo_t : public unique_vbo_t
 	{
 	public:
-		unique_ubo_t(): unique_vbo_t{GL_UNIFORM_BUFFER}
-		{}
+		explicit unique_ubo_t(const i32 location): unique_vbo_t{GL_UNIFORM_BUFFER}
+		{set_location(location);}
+
+		void set_location(i32 new_location);
+
+		[[nodiscard]] i32 get_location() const
+		{
+			return location;
+		}
+	private:
+		i32 location = 0;
 	};
 }
 
