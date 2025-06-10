@@ -36,12 +36,8 @@ namespace blt::gfx
 		 */
 		class vbo_context_t
 		{
+			friend unique_vbo_t;
 		public:
-			explicit vbo_context_t(unique_vbo_t& vbo): vbo(vbo)
-			{
-				bind();
-			}
-
 			/**
 			 * By default, the VBO is bound when this class is constructed (this class should only be constructed through the VBO bind() method)
 			 *
@@ -93,6 +89,13 @@ namespace blt::gfx
 			}
 
 		private:
+			[[nodiscard]] bool is_bound() const;
+
+			explicit vbo_context_t(unique_vbo_t& vbo): vbo(vbo)
+			{
+				bind();
+			}
+
 			unique_vbo_t& vbo;
 		};
 	}
@@ -137,12 +140,29 @@ namespace blt::gfx
 		 * This allows you to use the VBO without worrying about whether an operation is valid in this context.
 		 * As so long as you use this object in line, or without binding other VBOs to the same buffer_type
 		 * (violating the contracts this function attempts to create) then all functions on the associated object are valid to call.
+		 *
+		 * You can enable the flag BLT_DEBUG_CONTRACTS which will validate VBO bind state making most of ^ irrelevant
 		 */
-		[[nodiscard]] detail::vbo_context_t bind();
+		detail::vbo_context_t bind();
 
 		[[nodiscard]] auto native_handle() const
 		{
 			return vboID;
+		}
+
+		[[nodiscard]] GLsizeiptr get_size() const
+		{
+			return size;
+		}
+
+		[[nodiscard]] GLint get_memory_type() const
+		{
+			return memory_type;
+		}
+
+		[[nodiscard]] GLuint get_buffer_type() const
+		{
+			return buffer_type;
 		}
 
 		~unique_vbo_t()

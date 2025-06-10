@@ -18,26 +18,38 @@
 #include <vbo.h>
 #include <blt/gfx/window.h>
 #include <blt/std/assert.h>
+#include <blt/std/hashmap.h>
 
 namespace blt::gfx
 {
+	#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
+		static hashmap_t<GLuint, GLuint> bound_vbo_ids;
+	#endif
+
 	namespace detail
 	{
 		vbo_context_t& vbo_context_t::bind()
 		{
-			BLT_CONTRACT(vbo.vboID, "Expected VBO to have an assoicated VBO ID!");
+			BLT_CONTRACT(vbo.vboID, "Expected VBO to have an associated VBO ID!");
 			glBindBuffer(vbo.buffer_type, *vbo.vboID);
+			#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
+				bound_vbo_ids[vbo.buffer_type] = *vbo.vboID;
+			#endif
 			return *this;
 		}
 
 		vbo_context_t& vbo_context_t::unbind()
 		{
 			glBindBuffer(vbo.buffer_type, 0);
+			#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
+				bound_vbo_ids[vbo.buffer_type] = 0;
+			#endif
 			return *this;
 		}
 
 		vbo_context_t& vbo_context_t::resize(const GLsizeiptr size, const GLint mem_type)
 		{
+			BLT_CONTRACT(is_bound(), "Expected VBO to be bound before resizing!");
 			vbo.size = size;
 			vbo.memory_type = mem_type;
 			glBufferData(vbo.buffer_type, size, nullptr, mem_type);
@@ -46,6 +58,7 @@ namespace blt::gfx
 
 		vbo_context_t& vbo_context_t::upload(const size_t size, const void* ptr, const GLint mem_type)
 		{
+			BLT_CONTRACT(is_bound(), "Expected VBO to be bound before uploading!");
 			if (mem_type != vbo.memory_type || static_cast<size_t>(vbo.size) < size)
 			{
 				vbo.size = static_cast<GLsizeiptr>(size);
@@ -60,8 +73,18 @@ namespace blt::gfx
 
 		vbo_context_t& vbo_context_t::update(const size_t offset, const size_t size, const void* ptr)
 		{
+			BLT_CONTRACT(is_bound(), "Expected VBO to be bound before updating!");
 			glBufferSubData(vbo.buffer_type, static_cast<GLsizeiptr>(offset), static_cast<GLsizeiptr>(size), ptr);
 			return *this;
+		}
+
+		bool vbo_context_t::is_bound() const
+		{
+			#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
+				return bound_vbo_ids[vbo.buffer_type] == *vbo.vboID;
+			#else
+				return true;
+			#endif
 		}
 	}
 
