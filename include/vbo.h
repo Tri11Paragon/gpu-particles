@@ -109,7 +109,7 @@ namespace blt::gfx
 		friend class detail::vbo_context_t;
 
 	public:
-		explicit unique_vbo_t(const GLuint type): buffer_type(type)
+		explicit unique_vbo_t(const GLuint type): vboID(0), buffer_type(type)
 		{
 			glGenBuffers(1, &*vboID);
 		}
