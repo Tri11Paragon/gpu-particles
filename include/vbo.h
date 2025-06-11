@@ -38,6 +38,10 @@ namespace blt::gfx
 		{
 			friend unique_vbo_t;
 		public:
+			vbo_context_t(const vbo_context_t& copy) = delete;
+			vbo_context_t(vbo_context_t&& move) = delete;
+			vbo_context_t& operator=(const vbo_context_t& copy) = delete;
+			vbo_context_t& operator=(vbo_context_t&& move) = delete;
 			/**
 			 * By default, the VBO is bound when this class is constructed (this class should only be constructed through the VBO bind() method)
 			 *

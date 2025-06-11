@@ -32,7 +32,7 @@ namespace blt::gfx
 		struct vao_vbo_storage_t
 		{
 			std::unique_ptr<unique_vbo_t> vbo;
-			u32 attribute_number = 0;
+			std::optional<std::vector<u32>> attribute_numbers;
 
 			[[nodiscard]] bool is_element() const
 			{
@@ -47,21 +47,55 @@ namespace blt::gfx
 		{
 			friend class vao_context_t;
 		public:
+			vao_vbo_context_t(const vao_vbo_context_t& copy) = delete;
+			vao_vbo_context_t(vao_vbo_context_t&& move) = delete;
+			vao_vbo_context_t& operator=(const vao_vbo_context_t& copy) = delete;
+			vao_vbo_context_t& operator=(vao_vbo_context_t&& move) = delete;
+			/**
+			 * This function takes ownership of the underlying VBO (GPU side). It will be freed when the basic vertex array is deleted
+			 * @param attribute_number attribute number to bind to
+			 * @param coordinate_size size of the data (number of elements, not the number of bytes)
+			 * @param type GL_TYPE type of data
+			 * @param stride how many bytes this data takes (for the entire per-vertex data structure) 0 will assume packed data
+			 *               This is in effect how many bytes until the next block of data
+			 * @param offset offset into the data structure to where the data is stored
+			 */
+			vao_vbo_context_t& attribute_ptr(int attribute_number, int coordinate_size, GLenum type, int stride, long offset);
 
+			vao_vbo_context_t& silence()
+			{
+				attributed = true;
+				return *this;
+			}
+
+			/**
+			 * Useless function, but if it makes you feel better, feel free to use it.
+			 */
+			vao_vbo_context_t& as_element()
+			{
+				return *this;
+			}
+
+			~vao_vbo_context_t();
 		private:
 			vao_vbo_context_t(unique_vao_t& vao, vao_vbo_storage_t& vbo): vbo(vbo), vao(vao)
 			{}
 
 			vao_vbo_storage_t& vbo;
 			unique_vao_t& vao;
+			bool attributed = false;
 		};
 
 		class vao_context_t
 		{
 			friend vao_vbo_context_t;
-			friend class unique_vao_t;
-
+			friend unique_vao_t;
 		public:
+			vao_context_t(const vao_context_t& copy) = delete;
+			vao_context_t(vao_context_t&& move) = delete;
+			vao_context_t& operator=(const vao_context_t& copy) = delete;
+			vao_context_t& operator=(vao_context_t&& move) = delete;
+
 			vao_context_t& bind();
 
 			vao_context_t& unbind();

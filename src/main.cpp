@@ -24,7 +24,6 @@
 #include <shaders/particle.frag>
 #include <shaders/particle.vert>
 #include <imgui.h>
-#include <blt/std/ranges.h>
 
 constexpr blt::size_t PARTICLE_COUNT = 8192;
 
@@ -48,9 +47,7 @@ struct particle_t
 	}
 };
 
-std::unique_ptr<blt::gfx::vertex_array_t> particle_vao;
-std::unique_ptr<blt::gfx::vertex_buffer_t> particle_vbo;
-std::unique_ptr<blt::gfx::element_buffer_t> alive_particles_ebo;
+std::optional<blt::gfx::unique_vao_t> particle_vao;
 std::unique_ptr<blt::gfx::shader_t> particle_shader;
 
 std::vector<blt::u32> alive_particles;
@@ -69,17 +66,16 @@ void init(const blt::gfx::window_data&)
 		alive_particles.push_back(i);
 	}
 
-	particle_vbo = std::make_unique<vertex_buffer_t>();
-	particle_vbo->create(GL_ARRAY_BUFFER);
-	particle_vbo->allocate(sizeof(particle_t) * particles.size(), GL_DYNAMIC_DRAW, particles.data());
+	unique_vbo_t particle_vbo(GL_ARRAY_BUFFER);
+	particle_vbo.bind().upload(sizeof(particle_t) * particles.size(), particles.data(), GL_DYNAMIC_DRAW);
 
-	alive_particles_ebo = std::make_unique<element_buffer_t>();
-	alive_particles_ebo->create();
-	alive_particles_ebo->allocate(sizeof(blt::u32) * alive_particles.size(), GL_DYNAMIC_DRAW, alive_particles.data());
+	unique_ebo_t alive_particles_ebo;
+	alive_particles_ebo.bind().upload(sizeof(blt::u32) * alive_particles.size(), alive_particles.data(), GL_DYNAMIC_DRAW);
 
-	particle_vao = std::make_unique<vertex_array_t>();
-	particle_vao->bindVBO(*particle_vbo, 0, 2, GL_FLOAT, sizeof(particle_t), 0);
-	particle_vao->bindElement(*alive_particles_ebo);
+	particle_vao = unique_vao_t();
+	const auto vao_ctx = particle_vao->bind();
+	vao_ctx.attach_vbo(std::move(particle_vbo)).attribute_ptr(0, 2, GL_FLOAT, sizeof(particle_t), 0);
+	vao_ctx.attach_vbo(std::move(alive_particles_ebo));
 
 	global_matrices.create_internals();
 	resources.load_resources();
@@ -99,6 +95,8 @@ void update(const blt::gfx::window_data& data)
 
 void destroy(const blt::gfx::window_data&)
 {
+	particle_vao.reset();
+	particle_shader.reset();
 	global_matrices.cleanup();
 	resources.cleanup();
 	renderer_2d.cleanup();

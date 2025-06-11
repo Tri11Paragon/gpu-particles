@@ -22,14 +22,45 @@
 
 namespace blt::gfx
 {
-	#define BLT_DEBUG_LEVEL BLT_DEBUG_CONTRACTS
+	#define ENSURE_CONTEXT_BOUND BLT_CONTRACT(glfwGetCurrentContext() != nullptr, "Expected active OpenGL context!")
 
 	#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
-		GLuint bound_vao_id;
+	GLuint bound_vao_id;
 	#endif
+
+	detail::vao_vbo_context_t& detail::vao_vbo_context_t::attribute_ptr(const int attribute_number, const int coordinate_size, const GLenum type,
+																		const int stride, const long offset)
+	{
+		if (auto& vec = vbo.attribute_numbers)
+		{
+			for (const auto& v : *vec)
+			{
+				if (static_cast<i32>(v) == attribute_number)
+					goto use;
+			}
+			vec->push_back(attribute_number);
+		}
+		use:
+		glEnableVertexAttribArray(attribute_number);
+		glVertexAttribPointer(attribute_number, coordinate_size, type, GL_FALSE, stride < 0 ? 0 : stride, reinterpret_cast<void*>(offset));
+		attributed = true;
+		return *this;
+	}
+
+	detail::vao_vbo_context_t::~vao_vbo_context_t()
+	{
+		#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
+		if (!(vbo.is_element() || attributed))
+		{
+			BLT_WARN("VBO is not an element array buffer or been assigned to an attribute, are you sure this is what you want?");
+			BLT_WARN("You can silence this warning by calling .silence()");
+		}
+		#endif
+	}
 
 	detail::vao_context_t& detail::vao_context_t::bind()
 	{
+		ENSURE_CONTEXT_BOUND;
 		BLT_CONTRACT(vao.vaoID, "Expected VAO to have an associated VAO ID!");
 		glBindVertexArray(*vao.vaoID);
 		bound_vao_id = *vao.vaoID;
@@ -45,6 +76,7 @@ namespace blt::gfx
 
 	detail::vao_vbo_context_t detail::vao_context_t::attach_vbo(unique_vbo_t&& vbo) const
 	{
+		ENSURE_CONTEXT_BOUND;
 		BLT_CONTRACT(vao.vaoID, "Expected VAO to have an associated VAO ID!");
 		BLT_CONTRACT(is_bound(), "Expected VAO to be bound before attaching VBO! (If you are using this API correctly, this has been done for you!)");
 
@@ -60,7 +92,7 @@ namespace blt::gfx
 
 	detail::vao_context_t unique_vao_t::bind()
 	{
-		BLT_CONTRACT(glfwGetCurrentContext() != nullptr, "Expected active OpenGL context!");
+		ENSURE_CONTEXT_BOUND;
 		return detail::vao_context_t{*this};
 	}
 }
