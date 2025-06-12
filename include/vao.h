@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <vbo.h>
+#include <blt/std/hashmap.h>
 #include <blt/std/vector.h>
 
 namespace blt::gfx
@@ -32,7 +33,7 @@ namespace blt::gfx
 		struct vao_vbo_storage_t
 		{
 			std::unique_ptr<unique_vbo_t> vbo;
-			std::optional<std::vector<u32>> attribute_numbers;
+			std::optional<hashset_t<u32>> attribute_numbers;
 
 			[[nodiscard]] bool is_element() const
 			{
@@ -101,7 +102,6 @@ namespace blt::gfx
 			vao_context_t& unbind();
 
 			vao_vbo_context_t attach_vbo(unique_vbo_t&& vbo) const;
-
 		private:
 			[[nodiscard]] bool is_bound() const;
 
@@ -139,6 +139,39 @@ namespace blt::gfx
 		}
 
 		detail::vao_context_t bind();
+
+		[[nodiscard]] std::optional<ref<unique_vbo_t>> get_attribute(const u32 attribute) const
+		{
+			for (const auto& vbo_obj : vbo_list)
+			{
+				if (const auto attrs = vbo_obj.attribute_numbers)
+				{
+					if (attrs->contains(attribute))
+						return *vbo_obj.vbo;
+				}
+			}
+			return {};
+		}
+
+		[[nodiscard]] std::optional<ref<unique_vbo_t>> get_buffer_type(const GLuint buffer_type) const
+		{
+			for (const auto& vbo_obj : vbo_list)
+			{
+				if (vbo_obj.vbo->get_buffer_type() == buffer_type)
+					return *vbo_obj.vbo;
+			}
+			return {};
+		}
+
+		[[nodiscard]] std::optional<ref<unique_vbo_t>> get_element() const
+		{
+			for (const auto& vbo_obj : vbo_list)
+			{
+				if (vbo_obj.is_element())
+					return *vbo_obj.vbo;
+			}
+			return {};
+		}
 
 		~unique_vao_t()
 		{

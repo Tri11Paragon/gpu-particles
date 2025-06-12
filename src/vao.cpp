@@ -25,22 +25,16 @@ namespace blt::gfx
 	#define ENSURE_CONTEXT_BOUND BLT_CONTRACT(glfwGetCurrentContext() != nullptr, "Expected active OpenGL context!")
 
 	#if blt_debug_has_flag(BLT_DEBUG_CONTRACTS)
-	GLuint bound_vao_id;
+	GLuint bound_vao_id = 0;
 	#endif
 
 	detail::vao_vbo_context_t& detail::vao_vbo_context_t::attribute_ptr(const int attribute_number, const int coordinate_size, const GLenum type,
 																		const int stride, const long offset)
 	{
-		if (auto& vec = vbo.attribute_numbers)
-		{
-			for (const auto& v : *vec)
-			{
-				if (static_cast<i32>(v) == attribute_number)
-					goto use;
-			}
-			vec->push_back(attribute_number);
-		}
-		use:
+		if (!vbo.attribute_numbers)
+			vbo.attribute_numbers = hashset_t<u32>();
+		if (!vbo.attribute_numbers->contains(attribute_number))
+			vbo.attribute_numbers->insert(attribute_number);
 		glEnableVertexAttribArray(attribute_number);
 		glVertexAttribPointer(attribute_number, coordinate_size, type, GL_FALSE, stride < 0 ? 0 : stride, reinterpret_cast<void*>(offset));
 		attributed = true;
@@ -69,6 +63,7 @@ namespace blt::gfx
 
 	detail::vao_context_t& detail::vao_context_t::unbind() // NOLINT
 	{
+		ENSURE_CONTEXT_BOUND;
 		glBindVertexArray(0);
 		bound_vao_id = 0;
 		return *this;
