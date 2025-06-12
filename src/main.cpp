@@ -14,16 +14,16 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include <imgui.h>
+#include <blt/gfx/vao.h>
+#include <blt/gfx/vbo.h>
 #include <blt/gfx/window.h>
-#include "blt/gfx/renderer/resource_manager.h"
-#include "blt/gfx/renderer/batch_2d_renderer.h"
-#include "blt/gfx/renderer/camera.h"
 #include <blt/std/random.h>
-#include <vao.h>
-#include <vbo.h>
 #include <shaders/particle.frag>
 #include <shaders/particle.vert>
-#include <imgui.h>
+#include "blt/gfx/renderer/batch_2d_renderer.h"
+#include "blt/gfx/renderer/camera.h"
+#include "blt/gfx/renderer/resource_manager.h"
 
 constexpr blt::size_t PARTICLE_COUNT = 8192;
 
@@ -70,10 +70,9 @@ public:
 		unique_ebo_t alive_particles_ebo;
 		alive_particles_ebo.bind().upload(sizeof(blt::u32) * alive_particles.size(), alive_particles.data(), GL_DYNAMIC_DRAW);
 
-		auto vao_ctx = particle_vao.bind();
+		const auto vao_ctx = particle_vao.configure();
 		vao_ctx.attach_vbo(std::move(particle_vbo)).attribute_ptr(0, 2, GL_FLOAT, sizeof(particle_t), 0);
 		vao_ctx.attach_vbo(std::move(alive_particles_ebo));
-		vao_ctx.unbind();
 	}
 
 	void render()
@@ -84,7 +83,6 @@ public:
 		particle_shader->setInt("tex1", 0);
 		particle_shader->setInt("tex2", 1);
 		particle_vao.bind();
-		// particle_vao.get_element()->get().bind();
 		glActiveTexture(GL_TEXTURE0);
 		resources.get("silly").value()->bind();
 		glActiveTexture(GL_TEXTURE1);
