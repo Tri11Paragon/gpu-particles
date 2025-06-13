@@ -1,6 +1,3 @@
-#ifdef __cplusplus
-#include <string>
-const std::string shader_particle_2d_frag = R"("
 #version 300 es
 precision mediump float;
 
@@ -20,6 +17,3 @@ void main()
     else
         FragColor = texture(tex2, vec2(x, y));
 }
-
-")";
-#endif

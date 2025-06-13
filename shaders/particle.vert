@@ -1,6 +1,3 @@
-#ifdef __cplusplus
-#include <string>
-const std::string shader_particle_2d_vert = R"("
 #version 300 es
 precision mediump float;
 
@@ -25,6 +22,3 @@ void main()
         silly = 0.0f;
     gl_Position = ovm * vec4(position.x, position.y, 0.0, 1.0);
 }
-
-")";
-#endif

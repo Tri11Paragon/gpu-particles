@@ -19,8 +19,8 @@
 #include <blt/gfx/vbo.h>
 #include <blt/gfx/window.h>
 #include <blt/std/random.h>
-#include <shaders/particle.frag>
-#include <shaders/particle.vert>
+#include <shaders/particle.frag.h>
+#include <shaders/particle.vert.h>
 #include "blt/gfx/renderer/batch_2d_renderer.h"
 #include "blt/gfx/renderer/camera.h"
 #include "blt/gfx/renderer/resource_manager.h"
@@ -62,7 +62,7 @@ public:
 			alive_particles.push_back(i);
 		}
 
-		particle_shader = std::unique_ptr<shader_t>(shader_t::make(shader_particle_2d_vert, shader_particle_2d_frag));
+		particle_shader = std::unique_ptr<shader_t>(shader_t::make(shaders::particle_vert_str, shaders::particle_frag_str));
 
 		unique_vbo_t particle_vbo(GL_ARRAY_BUFFER);
 		particle_vbo.bind().upload(sizeof(particle_t) * particles.size(), particles.data(), GL_DYNAMIC_DRAW);
