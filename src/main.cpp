@@ -14,22 +14,21 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include <imgui.h>
-#include <blt/gfx/vao.h>
-#include <blt/gfx/vbo.h>
 #include <blt/gfx/window.h>
-#include <blt/std/random.h>
-#include <shaders/particle.frag.h>
-#include <shaders/particle.vert.h>
+#include "blt/gfx/renderer/resource_manager.h"
 #include "blt/gfx/renderer/batch_2d_renderer.h"
 #include "blt/gfx/renderer/camera.h"
-#include "blt/gfx/renderer/resource_manager.h"
+#include <blt/std/random.h>
+#include <blt/gfx/vao.h>
+#include <shaders/particle.frag>
+#include <shaders/particle.vert>
+#include <imgui.h>
 
 constexpr blt::size_t PARTICLE_COUNT = 8192;
 
-blt::gfx::matrix_state_manager global_matrices;
-blt::gfx::resource_manager resources;
-blt::gfx::batch_renderer_2d renderer_2d(resources, global_matrices);
+blt::gfx::matrix_state_manager   global_matrices;
+blt::gfx::resource_manager       resources;
+blt::gfx::batch_renderer_2d      renderer_2d(resources, global_matrices);
 blt::gfx::first_person_camera_2d camera;
 
 // use types for state that way you are not confused about what is happening?
@@ -39,14 +38,35 @@ struct particle_t
 	blt::vec2 position;
 	blt::vec2 velocity;
 	blt::vec2 acceleration;
-	float mass = 10;
-	float unused;
+	float     mass = 10;
+	float     unused;
 
 	static particle_t make_particle()
 	{
 		static blt::random::random_t random{std::random_device()()};
 		return {blt::vec2{random.get(20.0f, 1880.0f), random.get(20.0f, 1000.0f)}, blt::vec2{}, blt::vec2{}};
 	}
+};
+
+struct particle_buffer_t
+{
+	particle_t& update(size_t index)
+	{
+
+	}
+
+	[[nodiscard]] auto data() const
+	{
+		return buffer.data();
+	}
+
+	[[nodiscard]] auto size() const
+	{
+		return buffer.size();
+	}
+
+private:
+	std::vector<particle_t> buffer;
 };
 
 class gpu_particle_renderer
@@ -62,17 +82,21 @@ public:
 			alive_particles.push_back(i);
 		}
 
-		particle_shader = std::unique_ptr<shader_t>(shader_t::make(shaders::particle_vert_str, shaders::particle_frag_str));
+		particle_shader = std::unique_ptr<shader_t>(shader_t::make(shader_particle_2d_vert, shader_particle_2d_frag));
 
-		unique_vbo_t particle_vbo(GL_ARRAY_BUFFER);
+		unique_vbo_t particle_vbo{GL_ARRAY_BUFFER};
 		particle_vbo.bind().upload(sizeof(particle_t) * particles.size(), particles.data(), GL_DYNAMIC_DRAW);
 
 		unique_ebo_t alive_particles_ebo;
-		alive_particles_ebo.bind().upload(sizeof(blt::u32) * alive_particles.size(), alive_particles.data(), GL_DYNAMIC_DRAW);
+		alive_particles_ebo.bind().upload(sizeof(blt::u32) * alive_particles.size(),
+										  alive_particles.data(),
+										  GL_DYNAMIC_DRAW);
 
-		const auto vao_ctx = particle_vao.configure();
-		vao_ctx.attach_vbo(std::move(particle_vbo)).attribute_ptr(0, 2, GL_FLOAT, sizeof(particle_t), 0);
-		vao_ctx.attach_vbo(std::move(alive_particles_ebo));
+		const auto vao_cfg          = particle_vao.configure();
+		auto       particle_vbo_cfg = vao_cfg.attach_vbo(std::move(particle_vbo));
+		particle_vbo_cfg.attribute_ptr(0, 2, GL_FLOAT, sizeof(particle_t), 0);
+
+		vao_cfg.attach_vbo(std::move(alive_particles_ebo)).as_element();
 	}
 
 	void render()
@@ -83,6 +107,7 @@ public:
 		particle_shader->setInt("tex1", 0);
 		particle_shader->setInt("tex2", 1);
 		particle_vao.bind();
+		// particle_vao.get_element()->get().bind();
 		glActiveTexture(GL_TEXTURE0);
 		resources.get("silly").value()->bind();
 		glActiveTexture(GL_TEXTURE1);
@@ -92,13 +117,14 @@ public:
 	}
 
 private:
-	blt::gfx::unique_vao_t particle_vao;
+	blt::gfx::unique_vao_t              particle_vao;
 	std::unique_ptr<blt::gfx::shader_t> particle_shader;
 
-	std::vector<blt::u32> alive_particles;
-	std::vector<blt::u32> dead_particles;
+	std::vector<blt::u32>   alive_particles;
+	std::vector<blt::u32>   dead_particles;
 	std::vector<particle_t> particles;
 };
+
 
 std::optional<gpu_particle_renderer> particle_renderer;
 
@@ -139,7 +165,4 @@ void destroy(const blt::gfx::window_data&)
 	blt::gfx::cleanup();
 }
 
-int main()
-{
-	blt::gfx::init(blt::gfx::window_data{"My Sexy Window", init, update, destroy}.setSyncInterval(1));
-}
+int main() { blt::gfx::init(blt::gfx::window_data{"My Sexy Window", init, update, destroy}.setSyncInterval(1)); }
