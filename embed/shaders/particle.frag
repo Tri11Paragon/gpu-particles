@@ -1,4 +1,4 @@
-#version 300 es
+#version 430
 precision mediump float;
 
 uniform sampler2D tex1;

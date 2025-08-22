@@ -20,8 +20,8 @@
 #include "blt/gfx/renderer/camera.h"
 #include <blt/std/random.h>
 #include <blt/gfx/vao.h>
-#include <shaders/particle.frag>
-#include <shaders/particle.vert>
+#include <shaders/particle.frag.h>
+#include <shaders/particle.vert.h>
 #include <imgui.h>
 
 constexpr blt::size_t PARTICLE_COUNT = 8192;
@@ -48,27 +48,6 @@ struct particle_t
 	}
 };
 
-struct particle_buffer_t
-{
-	particle_t& update(size_t index)
-	{
-
-	}
-
-	[[nodiscard]] auto data() const
-	{
-		return buffer.data();
-	}
-
-	[[nodiscard]] auto size() const
-	{
-		return buffer.size();
-	}
-
-private:
-	std::vector<particle_t> buffer;
-};
-
 class gpu_particle_renderer
 {
 public:
@@ -82,7 +61,7 @@ public:
 			alive_particles.push_back(i);
 		}
 
-		particle_shader = std::unique_ptr<shader_t>(shader_t::make(shader_particle_2d_vert, shader_particle_2d_frag));
+		particle_shader = std::unique_ptr<shader_t>(shader_t::make(shaders::particle::vert::particle_vert_str, shaders::particle::frag::particle_frag_str));
 
 		unique_vbo_t particle_vbo{GL_ARRAY_BUFFER};
 		particle_vbo.bind().upload(sizeof(particle_t) * particles.size(), particles.data(), GL_DYNAMIC_DRAW);
