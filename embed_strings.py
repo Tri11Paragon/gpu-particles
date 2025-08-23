@@ -16,7 +16,7 @@ def embed(input_path, output_path, namespace, var_name):
         f"// Generated from {input_path}\n"
         f"#pragma once\n\n"
         f"namespace {safe_namespace_name(namespace)}" "\n{\n"
-        f"\tinline constexpr char {safe_var_name(var_name)}_str[] = R\"(\"{contents}\")\";\n""}"
+        f"\tinline constexpr char {safe_var_name(var_name)}_str[] = R\"({contents})\";\n""}"
     )
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path.with_suffix(output_path.suffix + ".h"), "w") as f:

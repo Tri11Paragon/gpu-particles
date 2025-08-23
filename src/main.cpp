@@ -31,22 +31,34 @@ blt::gfx::resource_manager       resources;
 blt::gfx::batch_renderer_2d      renderer_2d(resources, global_matrices);
 blt::gfx::first_person_camera_2d camera;
 
-// use types for state that way you are not confused about what is happening?
+constexpr float PARTICLE_SIZE = 25;
 
-struct particle_t
+blt::vec2 quad[6] = {
+	{-PARTICLE_SIZE, -PARTICLE_SIZE},
+	{-PARTICLE_SIZE, PARTICLE_SIZE},
+	{PARTICLE_SIZE, -PARTICLE_SIZE},
+
+	{-PARTICLE_SIZE, PARTICLE_SIZE},
+	{PARTICLE_SIZE, PARTICLE_SIZE},
+	{PARTICLE_SIZE, -PARTICLE_SIZE},
+};
+
+blt::vec2 quad_uvs[6] = {
+	{0, 0},
+	{0, 1},
+	{1, 0},
+
+	{0, 1},
+	{1, 1},
+	{1, 0}
+};
+
+
+struct particle_data_t
 {
 	blt::vec2 position;
-	blt::vec2 velocity;
-	blt::vec2 acceleration;
-	float     mass = 10;
-	float     unused;
-
-	static particle_t make_particle()
-	{
-		static blt::random::random_t random{std::random_device()()};
-		return {blt::vec2{random.get(20.0f, 1880.0f), random.get(20.0f, 1000.0f)}, blt::vec2{}, blt::vec2{}};
-	}
 };
+
 
 class gpu_particle_renderer
 {
@@ -55,33 +67,45 @@ public:
 	{
 		using namespace blt::gfx;
 
+		particle_shader = std::unique_ptr<shader_t>(
+			shader_t::make(shaders::particle::vert::particle_vert_str, shaders::particle::frag::particle_frag_str));
+
+		blt::random::random_t        rand{std::random_device()()};
+		std::vector<particle_data_t> data;
+		data.resize(PARTICLE_COUNT);
+		for (auto& v : data)
+			v = particle_data_t{blt::vec2{rand.get_float(0, 1920), rand.get_float(0, 1080)}};
+
+		particle_positions = std::make_unique<unique_ssbo_t>();
+		// particle_positions->bind().resize(PARTICLE_COUNT * sizeof(particle_data_t), buffer::usage_t::dynamic_draw);
+		particle_positions->bind().upload(data.size() * sizeof(particle_data_t),
+										  data.data(),
+										  buffer::usage_t::dynamic_draw);
+		particle_positions->location(1);
+
+		const auto cfg      = particle_vao.configure();
+		auto       quad_vbo = unique_vbo_t{buffer::array};
+		quad_vbo.bind().upload(sizeof(quad), quad, buffer::usage_t::static_draw);
+		cfg.attach_vbo(std::move(quad_vbo)).attribute_ptr(0, 2, memory_t::f32, 0, 0);
+
+		auto uv_vbo = unique_vbo_t{buffer::array};
+		uv_vbo.bind().upload(sizeof(uv_vbo), quad_uvs, buffer::usage_t::static_draw);
+		cfg.attach_vbo(std::move(uv_vbo)).attribute_ptr(1, 2, memory_t::f32, 0, 0);
+
+		std::vector<blt::u32> alive_indexes;
 		for (blt::size_t i = 0; i < PARTICLE_COUNT; i++)
-		{
-			particles.push_back(particle_t::make_particle());
-			alive_particles.push_back(i);
-		}
+			alive_indexes.push_back(static_cast<blt::u32>(i));
 
-		particle_shader = std::unique_ptr<shader_t>(shader_t::make(shaders::particle::vert::particle_vert_str, shaders::particle::frag::particle_frag_str));
-
-		unique_vbo_t particle_vbo{GL_ARRAY_BUFFER};
-		particle_vbo.bind().upload(sizeof(particle_t) * particles.size(), particles.data(), GL_DYNAMIC_DRAW);
-
-		unique_ebo_t alive_particles_ebo;
-		alive_particles_ebo.bind().upload(sizeof(blt::u32) * alive_particles.size(),
-										  alive_particles.data(),
-										  GL_DYNAMIC_DRAW);
-
-		const auto vao_cfg          = particle_vao.configure();
-		auto       particle_vbo_cfg = vao_cfg.attach_vbo(std::move(particle_vbo));
-		particle_vbo_cfg.attribute_ptr(0, 2, GL_FLOAT, sizeof(particle_t), 0);
-
-		vao_cfg.attach_vbo(std::move(alive_particles_ebo)).as_element();
+		auto alive_vbo = unique_vbo_t{buffer::array};
+		// alive_vbo.bind().resize(PARTICLE_COUNT * sizeof(GLuint), buffer::usage_t::dynamic_draw);
+		alive_vbo.bind().upload(alive_indexes.size() * sizeof(blt::u32),
+								alive_indexes.data(),
+								buffer::usage_t::dynamic_draw);
+		cfg.attach_vbo(std::move(alive_vbo)).attribute_ptr(2, 1, memory_t::u32, 0, 0).per_instance();
 	}
 
 	void render()
 	{
-		glPointSize(25);
-
 		particle_shader->bind();
 		particle_shader->setInt("tex1", 0);
 		particle_shader->setInt("tex2", 1);
@@ -92,16 +116,16 @@ public:
 		glActiveTexture(GL_TEXTURE1);
 		resources.get("happy").value()->bind();
 
-		glDrawElements(GL_POINTS, static_cast<int>(alive_particles.size()), GL_UNSIGNED_INT, nullptr);
+		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, alive_particles);
+		// glDrawElements(GL_POINTS, static_cast<int>(alive_particles.size()), GL_UNSIGNED_INT, nullptr);
 	}
 
 private:
-	blt::gfx::unique_vao_t              particle_vao;
-	std::unique_ptr<blt::gfx::shader_t> particle_shader;
+	blt::gfx::unique_vao_t                   particle_vao;
+	std::unique_ptr<blt::gfx::shader_t>      particle_shader;
+	std::unique_ptr<blt::gfx::unique_ssbo_t> particle_positions;
 
-	std::vector<blt::u32>   alive_particles;
-	std::vector<blt::u32>   dead_particles;
-	std::vector<particle_t> particles;
+	blt::i32 alive_particles = PARTICLE_COUNT;
 };
 
 

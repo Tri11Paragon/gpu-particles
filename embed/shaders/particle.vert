@@ -1,13 +1,15 @@
-#version 450 core
-precision mediump float;
+#version 460 core
 
 layout (location = 0) in vec2 vertex_pos;
+layout (location = 1) in vec2 uv_in;
+layout (location = 2) in uint alive_index;
 
-layout (std140, binding = 0) buffer particle_positions {
+out vec2 uv;
+out float silly;
+
+layout (std430, binding = 1) buffer particle_positions {
     vec2 pos[];
 };
-
-out float silly;
 
 layout (std140) uniform GlobalMatrices
 {
@@ -20,6 +22,8 @@ layout (std140) uniform GlobalMatrices
 
 void main()
 {
+    uv = uv_in;
+    vec2 position = vertex_pos + pos[alive_index];
     if (mod(position.x + position.y, 32.0f) >= 16.0f)
         silly = 1.0f;
     else
