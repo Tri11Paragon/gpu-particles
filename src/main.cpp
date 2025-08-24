@@ -57,6 +57,9 @@ blt::vec2 quad_uvs[6] = {
 struct particle_data_t
 {
 	blt::vec2 position;
+	blt::vec2 velocity;
+	blt::vec2 acceleration;
+	float mass = 1, pad = 0;
 };
 
 
@@ -80,7 +83,7 @@ public:
 		// particle_positions->bind().resize(PARTICLE_COUNT * sizeof(particle_data_t), buffer::usage_t::dynamic_draw);
 		particle_positions->bind().upload(data.size() * sizeof(particle_data_t),
 										  data.data(),
-										  buffer::usage_t::dynamic_draw);
+										  buffer::usage_t::dynamic_draw).unbind();
 		particle_positions->location(1);
 
 		const auto cfg      = particle_vao.configure();
@@ -89,7 +92,7 @@ public:
 		cfg.attach_vbo(std::move(quad_vbo)).attribute_ptr(0, 2, memory_t::f32, 0, 0);
 
 		auto uv_vbo = unique_vbo_t{buffer::array};
-		uv_vbo.bind().upload(sizeof(uv_vbo), quad_uvs, buffer::usage_t::static_draw);
+		uv_vbo.bind().upload(sizeof(quad_uvs), quad_uvs, buffer::usage_t::static_draw);
 		cfg.attach_vbo(std::move(uv_vbo)).attribute_ptr(1, 2, memory_t::f32, 0, 0);
 
 		std::vector<blt::u32> alive_indexes;

@@ -7,8 +7,16 @@ layout (location = 2) in uint alive_index;
 out vec2 uv;
 out float silly;
 
+struct particle_data_t
+{
+    vec2 position;
+    vec2 velocity;
+    vec2 acceleration;
+    float mass, pad;
+};
+
 layout (std430, binding = 1) buffer particle_positions {
-    vec2 pos[];
+    particle_data_t particles[];
 };
 
 layout (std140) uniform GlobalMatrices
@@ -23,10 +31,10 @@ layout (std140) uniform GlobalMatrices
 void main()
 {
     uv = uv_in;
-    vec2 position = vertex_pos + pos[alive_index];
+    vec2 position = particles[alive_index].position;
     if (mod(position.x + position.y, 32.0f) >= 16.0f)
         silly = 1.0f;
     else
         silly = 0.0f;
-    gl_Position = ovm * vec4(position.x, position.y, 0.0, 1.0);
+    gl_Position = ovm * vec4(vertex_pos + position, 0.0, 1.0);
 }
