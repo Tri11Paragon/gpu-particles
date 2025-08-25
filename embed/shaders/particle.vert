@@ -11,7 +11,6 @@ struct particle_data_t
 {
     vec2 position;
     vec2 velocity;
-    vec2 acceleration;
     float mass, pad;
 };
 
@@ -32,9 +31,9 @@ void main()
 {
     uv = uv_in;
     vec2 position = particles[alive_index].position;
-    if (mod(position.x + position.y, 32.0f) >= 16.0f)
-        silly = 1.0f;
-    else
-        silly = 0.0f;
+//    if (mod(position.x + position.y, 32.0f) >= 16.0f)
+//        silly = 1.0f;
+//    else
+//        silly = 0.0f;
     gl_Position = ovm * vec4(vertex_pos + position, 0.0, 1.0);
 }

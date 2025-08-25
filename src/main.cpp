@@ -22,6 +22,7 @@
 #include <blt/gfx/vao.h>
 #include <shaders/particle.frag.h>
 #include <shaders/particle.vert.h>
+#include <shaders/particle.comp.h>
 #include <imgui.h>
 
 constexpr blt::size_t PARTICLE_COUNT = 8192;
@@ -58,8 +59,14 @@ struct particle_data_t
 {
 	blt::vec2 position;
 	blt::vec2 velocity;
-	blt::vec2 acceleration;
-	float mass = 1, pad = 0;
+	float     mass = 1, drag = 0.1;
+
+	particle_data_t() = default;
+
+	explicit particle_data_t(const blt::vec2 position): position{position}
+	{
+		// velocity[0] = 25;
+	}
 };
 
 
@@ -72,6 +79,7 @@ public:
 
 		particle_shader = std::unique_ptr<shader_t>(
 			shader_t::make(shaders::particle::vert::particle_vert_str, shaders::particle::frag::particle_frag_str));
+		compute_shader = std::make_unique<compute_shader_t>(shaders::particle::comp::particle_comp_str);
 
 		blt::random::random_t        rand{std::random_device()()};
 		std::vector<particle_data_t> data;
@@ -109,6 +117,16 @@ public:
 
 	void render()
 	{
+		compute_shader->bind();
+		auto dt = static_cast<float>(blt::gfx::getFrameDeltaSeconds());
+		if (dt > 0.25)
+			dt = 0.25;
+		compute_shader->setFloat("dt", dt);
+		compute_shader->execute(PARTICLE_COUNT / 128, 1, 1);
+
+		glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+		compute_shader->unbind();
+
 		particle_shader->bind();
 		particle_shader->setInt("tex1", 0);
 		particle_shader->setInt("tex2", 1);
@@ -124,9 +142,10 @@ public:
 	}
 
 private:
-	blt::gfx::unique_vao_t                   particle_vao;
-	std::unique_ptr<blt::gfx::shader_t>      particle_shader;
-	std::unique_ptr<blt::gfx::unique_ssbo_t> particle_positions;
+	blt::gfx::unique_vao_t                      particle_vao;
+	std::unique_ptr<blt::gfx::shader_t>         particle_shader;
+	std::unique_ptr<blt::gfx::compute_shader_t> compute_shader;
+	std::unique_ptr<blt::gfx::unique_ssbo_t>    particle_positions;
 
 	blt::i32 alive_particles = PARTICLE_COUNT;
 };

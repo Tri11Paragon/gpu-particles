@@ -1,0 +1,46 @@
+#version 430 core
+
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+struct particle_data_t
+{
+    vec2 position;
+    vec2 velocity;
+    float mass, drag;
+};
+
+layout (std430, binding = 1) buffer particle_positions {
+    particle_data_t particles[];
+};
+
+uniform float dt;
+
+const vec2 point_of_graivty = vec2(1920 / 2, 1080 / 2);
+const float point_mass = 5000;
+const float e = 0.1;
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+
+    if (i >= particles.length())
+        return;
+
+    particle_data_t particle = particles[i];
+
+    float invMass = (particle.mass > 0.0f) ? (1.0f / particle.mass) : 0.0f;
+
+    vec2 acceleration_drag = -(particle.drag * invMass) * particle.velocity;
+
+    vec2 to_center = point_of_graivty - particle.position;
+    float dist = length(to_center);
+    float r2 = dist * dist + e;
+    float top = particle.mass * point_mass;
+    vec2 gravity = to_center * (top / r2);
+
+    vec2 acceleration = acceleration_drag + gravity;
+
+    particle.velocity += acceleration * dt;
+    particle.position += particle.velocity * dt;
+
+    particles[i] = particle;
+}
