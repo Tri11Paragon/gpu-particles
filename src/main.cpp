@@ -25,14 +25,14 @@
 #include <shaders/particle.comp.h>
 #include <imgui.h>
 
-constexpr blt::size_t PARTICLE_COUNT = 8192;
+constexpr blt::size_t PARTICLE_COUNT = 128 * 512;
 
 blt::gfx::matrix_state_manager   global_matrices;
 blt::gfx::resource_manager       resources;
 blt::gfx::batch_renderer_2d      renderer_2d(resources, global_matrices);
 blt::gfx::first_person_camera_2d camera;
 
-constexpr float PARTICLE_SIZE = 25;
+constexpr float PARTICLE_SIZE = 10;
 
 blt::vec2 quad[6] = {
 	{-PARTICLE_SIZE, -PARTICLE_SIZE},
@@ -59,7 +59,7 @@ struct particle_data_t
 {
 	blt::vec2 position;
 	blt::vec2 velocity;
-	float     mass = 1, drag = 0.1;
+	float     mass = 10, drag = 0;
 
 	particle_data_t() = default;
 

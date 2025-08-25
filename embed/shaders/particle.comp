@@ -16,14 +16,20 @@ layout (std430, binding = 1) buffer particle_positions {
 uniform float dt;
 
 const vec2 point_of_graivty = vec2(1920 / 2, 1080 / 2);
+const float radius = 50;
+const float particle_size = 10;
+const float min_dist = radius + particle_size;
 const float point_mass = 5000;
-const float e = 0.1;
+
+const float restitution = 1;
+
+const float e = 10;
 
 void main() {
     uint i = gl_GlobalInvocationID.x;
 
     if (i >= particles.length())
-        return;
+    return;
 
     particle_data_t particle = particles[i];
 
@@ -41,6 +47,20 @@ void main() {
 
     particle.velocity += acceleration * dt;
     particle.position += particle.velocity * dt;
+
+    vec2 toNew = particle.position - point_of_graivty;
+    dist = length(toNew);
+
+    if (dist < min_dist) {
+        vec2 n = (dist > 0.0) ? (toNew / dist) : vec2(1.0, 0.0);
+
+        particle.position = point_of_graivty + n * min_dist;
+        float vn = dot(particle.velocity, n);
+        if (vn < 0.0) {
+            // v' = v - (1 + e) * (v·n) * n
+            particle.velocity = particle.velocity - (1.0 + restitution) * vn * n;
+        }
+    }
 
     particles[i] = particle;
 }
